@@ -1,131 +1,126 @@
-document.addEventListener('DOMContentLoaded', function() {
-  const observerOptions = {
-    threshold: 0.1,
-    rootMargin: '0px 0px -50px 0px'
-  };
+document.addEventListener('DOMContentLoaded', () => {
+  const fadeElements = document.querySelectorAll('.fade-in');
 
-  const fadeObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-      }
-    });
-  }, observerOptions);
+  if ('IntersectionObserver' in window && fadeElements.length) {
+    const observer = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15, rootMargin: '0px 0px -60px 0px' }
+    );
 
-  document.querySelectorAll('.fade-in').forEach(el => {
-    fadeObserver.observe(el);
-  });
+    fadeElements.forEach(el => observer.observe(el));
+  } else {
+    fadeElements.forEach(el => el.classList.add('visible'));
+  }
 
   const lightbox = document.getElementById('lightbox');
   const lightboxImg = document.getElementById('lightbox-img');
   const lightboxClose = document.getElementById('lightbox-close');
-  const galleryItems = document.querySelectorAll('.gallery-item');
 
-  galleryItems.forEach(item => {
-    item.addEventListener('click', () => {
-      const imgSrc = item.getAttribute('data-src');
-      lightboxImg.src = imgSrc;
-      lightbox.classList.add('active');
-      document.body.style.overflow = 'hidden';
+  if (lightbox && lightboxImg) {
+    document.querySelectorAll('.gallery-item img').forEach(img => {
+      img.addEventListener('click', () => {
+        const src = img.getAttribute('data-full') || img.src;
+        lightboxImg.src = src;
+        lightbox.classList.add('active');
+        document.documentElement.style.overflow = 'hidden';
+      });
     });
-  });
 
-  function closeLightbox() {
-    lightbox.classList.remove('active');
-    document.body.style.overflow = '';
+    const closeLightbox = () => {
+      lightbox.classList.remove('active');
+      lightboxImg.src = '';
+      document.documentElement.style.overflow = '';
+    };
+
+    lightboxClose?.addEventListener('click', closeLightbox);
+
+    lightbox.addEventListener('click', e => {
+      if (e.target === lightbox) closeLightbox();
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && lightbox.classList.contains('active')) {
+        closeLightbox();
+      }
+    });
   }
-
-  lightboxClose.addEventListener('click', closeLightbox);
-  lightbox.addEventListener('click', (e) => {
-    if (e.target === lightbox) {
-      closeLightbox();
-    }
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && lightbox.classList.contains('active')) {
-      closeLightbox();
-    }
-  });
 
   const contactForm = document.getElementById('contact-form');
   const formSuccess = document.getElementById('form-success');
   const sendAnother = document.getElementById('send-another');
 
-  const nameInput = document.getElementById('name');
-  const emailInput = document.getElementById('email');
-  const messageInput = document.getElementById('message');
+  if (contactForm) {
+    const fields = {
+      name: {
+        input: document.getElementById('name'),
+        error: document.getElementById('name-error'),
+        max: 100,
+        message: 'Name is required'
+      },
+      email: {
+        input: document.getElementById('email'),
+        error: document.getElementById('email-error'),
+        pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+        message: 'Enter a valid email'
+      },
+      message: {
+        input: document.getElementById('message'),
+        error: document.getElementById('message-error'),
+        max: 1000,
+        message: 'Message is required'
+      }
+    };
 
-  const nameError = document.getElementById('name-error');
-  const emailError = document.getElementById('email-error');
-  const messageError = document.getElementById('message-error');
+    const validateField = field => {
+      const value = field.input.value.trim();
+      let valid = true;
 
-  function validateEmail(email) {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-  }
+      if (!value) valid = false;
+      if (field.max && value.length > field.max) valid = false;
+      if (field.pattern && !field.pattern.test(value)) valid = false;
 
-  function validateForm() {
-    let isValid = true;
+      field.error.textContent = valid ? '' : field.message;
+      return valid;
+    };
 
-    if (!nameInput.value.trim()) {
-      nameError.textContent = 'Name is required';
-      isValid = false;
-    } else if (nameInput.value.trim().length > 100) {
-      nameError.textContent = 'Name must be less than 100 characters';
-      isValid = false;
-    } else {
-      nameError.textContent = '';
-    }
+    Object.values(fields).forEach(field => {
+      field.input.addEventListener('input', () => validateField(field));
+    });
 
-    if (!emailInput.value.trim()) {
-      emailError.textContent = 'Email is required';
-      isValid = false;
-    } else if (!validateEmail(emailInput.value)) {
-      emailError.textContent = 'Please enter a valid email';
-      isValid = false;
-    } else {
-      emailError.textContent = '';
-    }
-
-    if (!messageInput.value.trim()) {
-      messageError.textContent = 'Message is required';
-      isValid = false;
-    } else if (messageInput.value.trim().length > 1000) {
-      messageError.textContent = 'Message must be less than 1000 characters';
-      isValid = false;
-    } else {
-      messageError.textContent = '';
-    }
-
-    return isValid;
-  }
-
-  contactForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    
-    if (validateForm()) {
-      contactForm.classList.add('hidden');
-      formSuccess.classList.add('active');
-      
-      contactForm.reset();
-    }
-  });
-
-  sendAnother.addEventListener('click', () => {
-    formSuccess.classList.remove('active');
-    contactForm.classList.remove('hidden');
-  });
-
-  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function(e) {
+    contactForm.addEventListener('submit', e => {
       e.preventDefault();
-      const target = document.querySelector(this.getAttribute('href'));
-      if (target) {
-        target.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start'
-        });
+
+      const valid = Object.values(fields).every(validateField);
+
+      if (valid) {
+        contactForm.classList.add('hidden');
+        formSuccess.classList.add('active');
+        contactForm.reset();
+      }
+    });
+
+    sendAnother?.addEventListener('click', () => {
+      formSuccess.classList.remove('active');
+      contactForm.classList.remove('hidden');
+    });
+  }
+
+  document.querySelectorAll('a[href^="#"]').forEach(link => {
+    link.addEventListener('click', e => {
+      const id = link.getAttribute('href');
+      if (id.length > 1) {
+        const target = document.querySelector(id);
+        if (target) {
+          e.preventDefault();
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       }
     });
   });
